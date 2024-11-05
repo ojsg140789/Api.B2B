@@ -1,6 +1,8 @@
 ﻿using Api.B2B.Core.Dtos;
 using Api.B2B.Core.Interfaces;
+using Api.B2B.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.IdentityModel.Tokens.Jwt;
 using System.Threading.Tasks;
 
 namespace Api.B2B.API.Controllers
@@ -10,10 +12,12 @@ namespace Api.B2B.API.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly BlacklistService _blacklistService;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, BlacklistService blacklistService)
         {
             _authService = authService;
+            _blacklistService = blacklistService;
         }
 
         [HttpPost("login")]
@@ -30,9 +34,9 @@ namespace Api.B2B.API.Controllers
         }
 
         [HttpPost("logout")]
-        public async Task<IActionResult> Logout()
+        public IActionResult Logout()
         {
-            // Extract token from Authorization header
+            // Obtener el token desde el header de autorización
             var token = HttpContext.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
 
             if (string.IsNullOrEmpty(token))
@@ -40,10 +44,32 @@ namespace Api.B2B.API.Controllers
                 return BadRequest(new { message = "Token is required for logout" });
             }
 
-            // Call service to blacklist the token
-            await _authService.LogoutAsync(token);
+            // Obtener la fecha de expiración del token
+            var expiry = GetTokenExpiryDate(token);
+            if (expiry == null)
+            {
+                return BadRequest(new { message = "Invalid token" });
+            }
+
+            // Añadir el token a la lista negra
+            _blacklistService.BlacklistToken(token, expiry.Value);
 
             return Ok(new { message = "Logged out successfully" });
+        }
+
+        // Método auxiliar para obtener la fecha de expiración de un token JWT
+        private DateTime? GetTokenExpiryDate(string token)
+        {
+            var handler = new JwtSecurityTokenHandler();
+            var jwtToken = handler.ReadToken(token) as JwtSecurityToken;
+            var expClaim = jwtToken?.Claims.FirstOrDefault(claim => claim.Type == JwtRegisteredClaimNames.Exp)?.Value;
+
+            if (expClaim != null && long.TryParse(expClaim, out long exp))
+            {
+                return DateTimeOffset.FromUnixTimeSeconds(exp).UtcDateTime;
+            }
+
+            return null;
         }
     }
 }

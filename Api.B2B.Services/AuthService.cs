@@ -37,7 +37,7 @@ namespace Api.B2B.Services
                 return new LoginResponse
                 {
                     Success = false,
-                    Message = "Invalid username or password."
+                    Message = "Error al iniciar sesión. Verifica tus credenciales."
                 };
             }
 
@@ -47,7 +47,7 @@ namespace Api.B2B.Services
             return new LoginResponse
             {
                 Success = true,
-                Message = "Login successful.",
+                Message = "Login exitoso.",
                 Token = token
             };
         }

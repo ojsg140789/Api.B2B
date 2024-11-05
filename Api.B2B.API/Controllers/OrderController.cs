@@ -1,12 +1,14 @@
 ﻿using System.Threading.Tasks;
 using Api.B2B.Core.Dtos;
 using Api.B2B.Core.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.B2B.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class OrderController : ControllerBase
     {
         private readonly IOrderService _orderService;

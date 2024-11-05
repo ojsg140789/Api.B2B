@@ -29,6 +29,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddSingleton<BlacklistService>();
 
 // Configure JWT authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
@@ -54,16 +55,12 @@ builder.Services.AddAuthentication(options =>
     {
         OnTokenValidated = async context =>
         {
-            var authService = context.HttpContext.RequestServices.GetRequiredService<IAuthService>();
+            var blacklistService = context.HttpContext.RequestServices.GetRequiredService<BlacklistService>();
             var token = context.SecurityToken as JwtSecurityToken;
 
-            if (token != null)
+            if (token != null && blacklistService.IsTokenBlacklisted(token.RawData))
             {
-                bool isBlacklisted = await authService.IsTokenBlacklisted(token.RawData);
-                if (isBlacklisted)
-                {
-                    context.Fail("This token has been invalidated.");
-                }
+                context.Fail("This token has been invalidated.");
             }
         }
     };
@@ -78,7 +75,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 // Enable CORS with the specified policy
 app.UseCors("AllowAllOrigins");
