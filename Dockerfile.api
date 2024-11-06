@@ -1,0 +1,26 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /source
+
+COPY *.sln .
+COPY Api.B2B.Core/*.csproj ./Api.B2B.Core/
+COPY Api.B2B.Data/*.csproj ./Api.B2B.Data/
+COPY Api.B2B.Services/*.csproj ./Api.B2B.Services/
+COPY Api.B2B.API/*.csproj ./Api.B2B.API/
+RUN dotnet restore
+
+COPY Api.B2B.Core/. ./Api.B2B.Core/
+COPY Api.B2B.Data/. ./Api.B2B.Data/
+COPY Api.B2B.Services/. ./Api.B2B.Services/
+COPY Api.B2B.API/. ./Api.B2B.API/
+RUN dotnet publish Api.B2B.API/Api.B2B.API.csproj -c Release -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+COPY --from=build /app/publish .
+
+EXPOSE 80
+
+ENV ASPNETCORE_URLS=http://+:80
+ENV ASPNETCORE_ENVIRONMENT=Development
+
+ENTRYPOINT ["dotnet", "Api.B2B.API.dll"]
